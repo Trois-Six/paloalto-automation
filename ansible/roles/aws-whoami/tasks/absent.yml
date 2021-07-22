@@ -1,0 +1,48 @@
+- name: Gather facts about all availabily zones
+  amazon.aws.aws_az_info:
+    region: "{{ aws_region }}"
+  register: reg_aws_az_info
+
+- name: Gather facts about VPC
+  amazon.aws.ec2_vpc_net_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "vpc-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_vpc
+
+- name: Gather facts about the whoami ec2
+  community.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      "tag:Name": "whoami-{{ name_suffix }}"
+      "tag:Environment": simple
+      instance-state-name: [ "running"]
+  register: reg_ec2_instance_whoami
+
+- name: Delete whoami ec2 instance
+  community.aws.ec2_instance:
+    region: "{{ aws_region }}"
+    state: absent
+    instance_ids: "{{ (reg_ec2_instance_whoami.instances | first)['instance_id'] }}"
+  when: reg_ec2_instance_whoami.instances is defined and reg_ec2_instance_whoami.instances | length > 0
+
+- name: Gather facts about whoami eni
+  amazon.aws.ec2_eni_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "whoami-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_whoami_eni
+  when: reg_vpc.vpcs is defined and reg_vpc.vpcs | length > 0
+
+- name: Delete whoami eni
+  amazon.aws.ec2_eni:
+    eni_id: "{{ item }}"
+    region: "{{ aws_region }}"
+    state: absent
+  loop: "{{ reg_whoami_eni.network_interfaces | map(attribute='id') | list }}"
+  when: reg_whoami_eni.network_interfaces is defined and reg_whoami_eni.network_interfaces | length > 0

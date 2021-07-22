@@ -1,0 +1,8 @@
+project_state: present
+aws_region:
+public_key_file:
+name_suffix:
+vpc_cidr_block:
+public_subnet:
+mgmt_subnet:
+private_subnet:

@@ -1,0 +1,3 @@
+bootstrap_xml_path: ../../../common/bootstrap/bootstrap.xml
+init_cfg_path: ../../../common/bootstrap/init-cfg.txt
+name_suffix: paloalto

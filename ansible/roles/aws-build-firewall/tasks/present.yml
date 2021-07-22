@@ -1,0 +1,290 @@
+- name: Gather facts about all availabily zones
+  amazon.aws.aws_az_info:
+    region: "{{ aws_region }}"
+  register: reg_aws_az_info
+
+- name: Gather facts about VPC
+  amazon.aws.ec2_vpc_net_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "vpc-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_vpc
+
+- name: Gather facts about all subnets
+  amazon.aws.ec2_vpc_subnet_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "vpc-{{ name_suffix }}-*"
+      "tag:Environment": simple
+  register: reg_subnets
+  when: reg_vpc.vpcs | length > 0
+
+- set_fact:
+    fw_mgmt_subnet_id: "{{ (reg_subnets.subnets | selectattr('cidr_block', 'match', mgmt_subnet))[0]['subnet_id'] }}"
+    fw_eth1_subnet_id: "{{ (reg_subnets.subnets | selectattr('cidr_block', 'match', public_subnet))[0]['subnet_id'] }}"
+    fw_eth2_subnet_id: "{{ (reg_subnets.subnets | selectattr('cidr_block', 'match', private_subnet))[0]['subnet_id'] }}"
+  when: reg_vpc.vpcs | length > 0 and reg_subnets.subnets | length > 0
+
+- name: Create `public` security group
+  amazon.aws.ec2_group:
+    name: "public-{{ name_suffix }}"
+    description: "Wide open security group for firewall external interfaces."
+    vpc_id: "{{ reg_vpc.vpcs[0].id }}"
+    rules:
+      - proto: all
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+    rules_egress:
+      - proto: all
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "public-{{ name_suffix }}"
+  when: reg_vpc.vpcs | length > 0
+
+- name: Create `firewall mgmt` security group
+  amazon.aws.ec2_group:
+    name: "fw-mgmt-{{ name_suffix }}"
+    description: "Firewall Management Security Group."
+    vpc_id: "{{ reg_vpc.vpcs[0].id }}"
+    rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: "{{ fw_mgmt_allowed_from }}"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: "{{ fw_mgmt_allowed_from }}"
+      - proto: icmp
+        from_port: 8
+        to_port: 0
+        cidr_ip: "{{ fw_mgmt_allowed_from }}"
+    rules_egress:
+      - proto: all
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "fw-mgmt-{{ name_suffix }}"
+  when: reg_vpc.vpcs | length > 0
+
+- name: Get firewall mgmt interface infos - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "fw-mgmt-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_info_mgmt_eni
+
+- fail:
+    msg: "More than one fw-mgmt-{{ name_suffix }} network interface (eni)?"
+  when: reg_info_mgmt_eni.network_interfaces | length > 1
+
+- name: Create firewall mgmt interface - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni:
+    device_index: 0
+    private_ip_address: "{{ mgmt_subnet | ansible.netcommon.ipmath(4) }}"
+    subnet_id: "{{ fw_mgmt_subnet_id }}"
+    security_groups: [ "fw-mgmt-{{ name_suffix }}" ]
+    tags:
+      Environment: simple
+      Name: "fw-mgmt-{{ name_suffix }}"
+    region: "{{ aws_region }}"
+  register: reg_mgmt_eni
+  when: fw_mgmt_subnet_id is defined and reg_info_mgmt_eni.network_interfaces | length == 0
+
+- name: Set fact with fw-mgmt-{{ name_suffix }} id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  set_fact:
+    fw_mgmt_eni_id: >-
+      {%- if reg_info_mgmt_eni.network_interfaces | length == 0 -%}
+      {{ reg_mgmt_eni.interface.id }}
+      {%- else -%}
+      {{ (reg_info_mgmt_eni.network_interfaces | first)['id'] }}
+      {%- endif -%}
+
+- name: Get firewall untrust interface infos - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "fw-eth1-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_info_eth1_eni
+
+- fail:
+    msg: "More than one fw-eth1-{{ name_suffix }} network interface (eni)?"
+  when: reg_info_eth1_eni.network_interfaces | length > 1
+
+- name: Create firewall untrust interface - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni:
+    device_index: 1
+    private_ip_address: "{{ public_subnet | ansible.netcommon.ipmath(4) }}"
+    subnet_id: "{{ fw_eth1_subnet_id }}"
+    security_groups: [ "public-{{ name_suffix }}" ]
+    source_dest_check: false
+    tags:
+      Environment: simple
+      Name: "fw-eth1-{{ name_suffix }}"
+      Zone: "untrust"
+    region: "{{ aws_region }}"
+  register: reg_eth1_eni
+  when: fw_eth1_subnet_id is defined and reg_info_eth1_eni.network_interfaces | length == 0
+
+- name: Set fact with fw-eth1-{{ name_suffix }} id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  set_fact:
+    fw_eth1_eni_id: >-
+      {%- if reg_info_eth1_eni.network_interfaces | length == 0 -%}
+      {{ reg_eth1_eni.interface.id }}
+      {%- else -%}
+      {{ (reg_info_eth1_eni.network_interfaces | first)['id'] }}
+      {%- endif -%}
+
+- name: Get firewall trust interface infos - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "fw-eth2-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_info_eth2_eni
+
+- fail:
+    msg: "More than one fw-eth2-{{ name_suffix }} network interface (eni)?"
+  when: reg_info_eth2_eni.network_interfaces | length > 1
+
+- name: Create firewall trust interface - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni:
+    device_index: 2
+    private_ip_address: "{{ private_subnet | ansible.netcommon.ipmath(4) }}"
+    subnet_id: "{{ fw_eth2_subnet_id }}"
+    source_dest_check: false
+    tags:
+      Environment: simple
+      Name: "fw-eth2-{{ name_suffix }}"
+      Zone: "trust"
+    region: "{{ aws_region }}"
+  register: reg_eth2_eni
+  when: fw_eth2_subnet_id is defined and reg_info_eth2_eni.network_interfaces | length == 0
+
+- name: Set fact with fw-eth2-{{ name_suffix }} id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  set_fact:
+    fw_eth2_eni_id: >-
+      {%- if reg_info_eth2_eni.network_interfaces | length == 0 -%}
+      {{ reg_eth2_eni.interface.id }}
+      {%- else -%}
+      {{ (reg_info_eth2_eni.network_interfaces | first)['id'] }}
+      {%- endif -%}
+
+- name: Associate an elastic IP with the firewall mgmt interface
+  community.aws.ec2_eip:
+    device_id: "{{ fw_mgmt_eni_id }}"
+    in_vpc: true
+    tag_name: Name
+    tag_value: "fw-mgmt-{{ name_suffix }}"
+    region: "{{ aws_region }}"
+  when: fw_mgmt_eni_id is defined
+
+- name: Associate an elastic IP with the firewall untrust interface
+  community.aws.ec2_eip:
+    device_id: "{{ fw_eth1_eni_id }}"
+    in_vpc: true
+    tag_name: Name
+    tag_value: "fw-eth1-{{ name_suffix }}"
+    region: "{{ aws_region }}"
+  when: fw_eth1_eni_id is defined
+
+- name: Create IAM role for firewall bootstrap access
+  community.aws.iam_role:
+    name: "fw-bootstrap-{{ name_suffix }}"
+    purge_policies: false
+    path: /
+    create_instance_profile: true
+    assume_role_policy_document: "{{ lookup('file', iam_role_document_path) }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "fw-bootstrap-{{ name_suffix }}"
+
+- name: Create IAM role policy for firewall bootstrap access
+  community.aws.iam_policy:
+    policy_name: "fw-bootstrap-{{ name_suffix }}"
+    iam_name: "fw-bootstrap-{{ name_suffix }}"
+    iam_type: role
+    policy_json: "{{ lookup('file', iam_policy_document_path) }}"
+    skip_duplicates: false
+    region: "{{ aws_region }}"
+
+- name: Get firewall AMI
+  amazon.aws.ec2_ami_info:
+    owners: aws-marketplace
+    filters:
+      name: "PA-VM-AWS*{{ fw_version }}*"
+    region: "{{ aws_region }}"
+  register: reg_fw_ami
+
+- name: Create firewall ec2
+  community.aws.ec2_instance:
+    availability_zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+    image_id: "{{ image.image_id }}"
+    instance_type: "{{ fw_instance_type }}"
+    key_name: "ssh_key-{{ name_suffix }}"
+    termination_protection: false
+    instance_initiated_shutdown_behavior: stop
+    ebs_optimized: true
+    volumes:
+      - device_name: /dev/xvda
+        ebs:
+          volume_type: gp2
+          delete_on_termination: true
+    network:
+      interfaces: 
+        - id: "{{ fw_mgmt_eni_id }}"
+        - id: "{{ fw_eth1_eni_id }}"
+        - id: "{{ fw_eth2_eni_id }}"
+    instance_role: "fw-bootstrap-{{ name_suffix }}"
+    user_data: "vmseries-bootstrap-aws-s3bucket=s3-{{ name_suffix }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "fw-{{ name_suffix }}"
+  vars:
+    image: "{{ reg_fw_ami.images | sort(attribute='creation_date') | last }}"
+
+- name: Gather facts about the private route table
+  community.aws.ec2_vpc_route_table_info:
+    region: "{{ aws_region }}"
+    filters:
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "vpc-{{ name_suffix }}-private-{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      "tag:Environment": simple
+  register: reg_route_tables
+  when: reg_vpc.vpcs | length > 0
+
+- name: Add default route for private route over the firewall
+  community.aws.ec2_vpc_route_table:
+    route_table_id: "{{ reg_route_tables.route_tables[0].id }}"
+    vpc_id: "{{ reg_vpc.vpcs[0].id }}"
+    purge_routes: true
+    routes:
+      - dest: 0.0.0.0/0
+        network_interface_id: "{{ fw_eth2_eni_id }}"
+    purge_subnets: false
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}-private-{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+  when: reg_route_tables is defined and reg_route_tables.route_tables | length > 0

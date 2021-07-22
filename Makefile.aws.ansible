@@ -1,0 +1,5 @@
+CSP := aws
+TOOL := ansible
+
+%:
+	$(MAKE) -C $(CSP) -f Makefile.$(TOOL) $@

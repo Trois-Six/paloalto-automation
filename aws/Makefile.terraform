@@ -1,0 +1,30 @@
+.PHONY: apply run destroy delete fmt install init
+.DEFAULT_GOAL := apply
+TOOL := terraform
+
+apply:
+	@echo "Applying infrastructure...\n"
+	$(MAKE) -C build/$(TOOL) apply
+	@echo "Configuring firewall...\n"
+	$(MAKE) -C run/$(TOOL) apply
+	@echo "Commit configuration...\n"
+	$(MAKE) -C run/$(TOOL) commit
+
+run: apply
+
+destroy:
+	@echo "Destroying infrastructure...\n"
+	$(MAKE) -C build/$(TOOL) clean
+	$(MAKE) -C run/$(TOOL) distclean
+
+delete: destroy
+
+fmt:
+	@echo "Improving format of HCL files...\n"
+	$(MAKE) -C build/$(TOOL) fmt
+	$(MAKE) -C run/$(TOOL) fmt
+
+install:
+	@echo "Installing dependencies...\n"
+	$(MAKE) -C build/$(TOOL) init
+	$(MAKE) -C run/$(TOOL) init

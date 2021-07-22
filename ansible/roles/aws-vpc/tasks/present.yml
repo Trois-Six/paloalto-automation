@@ -1,0 +1,90 @@
+- name: Create VPC
+  amazon.aws.ec2_vpc_net:
+    name: "vpc-{{ name_suffix }}"
+    ipv6_cidr: false
+    cidr_block: "{{ vpc_cidr_block }}"
+    dns_hostnames: false
+    dns_support: true
+    tenancy: default
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+  register: reg_vpc
+
+- name: Gather facts about all availabily zones
+  amazon.aws.aws_az_info:
+    region: "{{ aws_region }}"
+  register: reg_aws_az_info
+
+- name: Set fact for availability zones
+  set_fact:
+    azs:
+      - "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+
+- name: Create public subnets
+  amazon.aws.ec2_vpc_subnet:
+    assign_instances_ipv6: false
+    az: "{{ azs[0] }}"
+    cidr: "{{ item }}"
+    map_public: true
+    vpc_id: "{{ reg_vpc.vpc.id }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}-public-{{ azs[0] }}"
+  loop:
+    - "{{ public_subnet }}"
+    - "{{ mgmt_subnet }}"
+  register: reg_public_subnets
+
+- name: Create private subnets
+  amazon.aws.ec2_vpc_subnet:
+    assign_instances_ipv6: false
+    az: "{{ azs[0] }}"
+    cidr: "{{ item }}"
+    map_public: false
+    vpc_id: "{{ reg_vpc.vpc.id }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}-private-{{ azs[0] }}"
+  loop:
+    - "{{ private_subnet }}"
+  register: reg_private_subnets
+
+- name: Create internet gateway
+  community.aws.ec2_vpc_igw:
+    vpc_id: "{{ reg_vpc.vpc.id }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}"
+  register: reg_igw
+
+- name: Create public route table
+  community.aws.ec2_vpc_route_table:
+    subnets: "{{ reg_public_subnets | community.general.json_query('results[*].subnet.id') }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ reg_igw.gateway_id }}"
+    vpc_id: "{{ reg_vpc.vpc.id }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}-public"
+
+- name: Create private route table
+  community.aws.ec2_vpc_route_table:
+    subnets: "{{ reg_private_subnets | community.general.json_query('results[*].subnet.id') }}"
+    purge_routes: false
+    vpc_id: "{{ reg_vpc.vpc.id }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "vpc-{{ name_suffix }}-private-{{ azs[0] }}"
+
+- name: Create ec2 key pair
+  amazon.aws.ec2_key:
+    name: "ssh_key-{{ name_suffix }}"
+    key_material: "{{ lookup('file', public_key_file) }}"
+    region: "{{ aws_region }}"

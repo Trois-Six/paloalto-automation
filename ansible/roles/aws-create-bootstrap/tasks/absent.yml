@@ -1,0 +1,7 @@
+- name: Delete bootstrap.xml and init-cfg.txt files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ bootstrap_xml_path }}"
+    - "{{ init_cfg_path }}"

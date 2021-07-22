@@ -1,0 +1,5 @@
+- include: present.yml
+  when: project_state == "present"
+
+- include: absent.yml
+  when: project_state == "absent"

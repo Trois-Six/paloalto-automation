@@ -1,0 +1,88 @@
+- name: Gather facts about all availabily zones
+  amazon.aws.aws_az_info:
+    region: "{{ aws_region }}"
+  register: reg_aws_az_info
+
+- name: Gather facts about VPC
+  amazon.aws.ec2_vpc_net_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "vpc-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_vpc
+
+- name: Gather fact about the private subnet
+  amazon.aws.ec2_vpc_subnet_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "vpc-{{ name_suffix }}-private-{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      "tag:Environment": simple
+  register: reg_subnets
+  when: reg_vpc.vpcs | length > 0
+
+- set_fact:
+    whoami_subnet_id: "{{ (reg_subnets.subnets | selectattr('cidr_block', 'match', private_subnet))[0]['subnet_id'] }}"
+  when: reg_vpc.vpcs | length > 0 and reg_subnets.subnets | length > 0
+
+- name: Get whoami interface infos - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni_info:
+    region: "{{ aws_region }}"
+    filters:
+      availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      vpc-id: "{{ reg_vpc.vpcs[0].id }}"
+      "tag:Name": "whoami-{{ name_suffix }}"
+      "tag:Environment": simple
+  register: reg_info_whoami_eni
+
+- fail:
+    msg: "More than one whoami-{{ name_suffix }} network interface (eni)?"
+  when: reg_info_whoami_eni.network_interfaces | length > 1
+
+- name: Create whoami network interface - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  amazon.aws.ec2_eni:
+    device_index: 0
+    private_ip_address: "{{ private_subnet | ansible.netcommon.ipmath(10) }}"
+    subnet_id: "{{ whoami_subnet_id }}"
+    tags:
+      Environment: simple
+      Name: "whoami-{{ name_suffix }}"
+    region: "{{ aws_region }}"
+  register: reg_whoami_eni
+  when: whoami_subnet_id is defined and reg_info_whoami_eni.network_interfaces | length == 0
+
+- name: Set fact with whoami-{{ name_suffix }} id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+  set_fact:
+    whoami_mgmt_eni_id: >-
+      {%- if reg_info_whoami_eni.network_interfaces | length == 0 -%}
+      {{ reg_whoami_eni.interface.id }}
+      {%- else -%}
+      {{ (reg_info_whoami_eni.network_interfaces | first)['id'] }}
+      {%- endif -%}
+
+- name: Get alpine AMI
+  amazon.aws.ec2_ami_info:
+    owners: 538276064493
+    filters:
+      name: alpine-ami-*
+      architecture: x86_64
+    region: "{{ aws_region }}"
+  register: reg_alpine_ami
+
+- name: Create whoami ec2
+  community.aws.ec2_instance:
+    availability_zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+    image_id: "{{ image.image_id }}"
+    instance_type: t2.micro
+    key_name: "ssh_key-{{ name_suffix }}"
+    network:
+      interfaces: 
+        - id: "{{ whoami_mgmt_eni_id }}"
+    user_data: "{{ lookup('file', '../../../common/whoami_user_data/user_data.sh') }}"
+    region: "{{ aws_region }}"
+    tags:
+      Environment: simple
+      Name: "whoami-{{ name_suffix }}"
+  vars:
+    image: "{{ reg_alpine_ami.images | sort(attribute='creation_date') | last }}"

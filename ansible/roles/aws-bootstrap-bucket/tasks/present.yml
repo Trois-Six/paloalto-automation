@@ -1,0 +1,27 @@
+- name: Create bootstrap bucket
+  amazon.aws.aws_s3:
+    bucket: "s3-{{ name_suffix }}"
+    mode: create  
+    permission: private
+    region: "{{ aws_region }}"
+
+- name: Push files to s3 bucket
+  amazon.aws.aws_s3:
+    bucket: "s3-{{ name_suffix }}"
+    object: "{{ item.object }}"
+    src: "{{ item.src }}"
+    mode: put
+    overwrite: different
+  loop:
+    - { object: "/config/init-cfg.txt", src: "{{ init_cfg_path }}" }
+    - { object: "/config/bootstrap.xml", src: "{{ bootstrap_xml_path }}" }
+
+- name: Create empty directories in the s3 bucket
+  amazon.aws.aws_s3:
+    bucket: "s3-{{ name_suffix }}"
+    object: "{{ item }}"
+    mode: create
+  loop:
+    - "/content"
+    - "/license"
+    - "/software"

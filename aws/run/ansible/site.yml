@@ -1,0 +1,7 @@
+- hosts: localhost
+  gather_facts: false
+  collections:
+    - paloaltonetworks.panos
+  roles:
+    - role: aws-run-firewall
+      tags: [ run-firewall ]

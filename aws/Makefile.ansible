@@ -1,0 +1,22 @@
+.PHONY: apply run destroy delete install
+.DEFAULT_GOAL := apply
+TOOL := ansible
+
+apply:
+	@echo "Applying infrastructure...\n"
+	$(MAKE) -C build/$(TOOL) run
+	@echo "Configuring firewall...\n"
+	$(MAKE) -C run/$(TOOL) run
+
+run: apply
+
+destroy:
+	@echo "Destroying infrastructure...\n"
+	$(MAKE) -C build/$(TOOL) delete
+
+delete: destroy
+
+install:
+	@echo "Installing dependencies...\n"
+	$(MAKE) -C build/$(TOOL) install
+	$(MAKE) -C run/$(TOOL) install

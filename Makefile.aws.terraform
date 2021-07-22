@@ -1,0 +1,9 @@
+CSP := aws
+TOOL := terraform
+
+%:
+	$(MAKE) -C $(CSP) -f Makefile.$(TOOL) $@
+
+install:
+	$(MAKE) -C $(CSP) -f Makefile.$(TOOL) install
+	$(MAKE) -C common/firewall_commit build

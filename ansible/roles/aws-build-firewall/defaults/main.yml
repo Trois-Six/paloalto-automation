@@ -1,0 +1,11 @@
+fw_mgmt_allowed_from:
+public_subnet:
+mgmt_subnet:
+private_subnet:
+fw_bootstrap_bucket:
+name_suffix: paloalto
+fw_instance_type: m5.xlarge
+fw_version: 10.1.0
+iam_role_document_path: ../../../common/aws_documents/iam_role.json
+iam_policy_document_path: ../../../common/aws_documents/iam_policy.json
+already_deleted: false

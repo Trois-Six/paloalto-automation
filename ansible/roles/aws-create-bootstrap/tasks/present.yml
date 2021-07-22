@@ -1,0 +1,42 @@
+# - name: Check if bootstrap template file exists
+#   stat:
+#     path: "{{ bootstrap_xml_path }}"
+#   register: reg_bootstrap_xml_path
+
+# - name: Create idempotent random password and salt
+#   set_fact:
+#     password: "{{ query('community.general.random_string', length=16, lower=true, numbers=true, special=true, override_special='@#-_=+:', upper=true) | first }}"
+#   when: not reg_bootstrap_xml_path.stat.exists
+
+# - name: Create hashed password fact
+#   set_fact:
+#     fw_hashed_password: "{{ password | password_hash('md5_crypt', salt) }}"
+#   vars:
+#     salt: "{{ query('community.general.random_string', length=8, lower=true, numbers=true, special=false, upper=true) | first }}"
+#   when: not reg_bootstrap_xml_path.stat.exists
+
+- name: Create hashed password fact
+  set_fact:
+    fw_hashed_password: "{{ fw_password | password_hash('md5_crypt', fw_salt) }}"
+
+- name: Create bootstrap.xml file from template
+  template:
+    src: "{{ bootstrap_xml_tpl_path }}"
+    dest: "{{ bootstrap_xml_path }}"
+    mode: 0644
+  vars:
+    fw_name: "fw-{{ name_suffix }}"
+  # when: not reg_bootstrap_xml_path.stat.exists
+
+- name: Create init-cfg.txt file from template
+  template:
+    src: "{{ init_cfg_tpl_path }}"
+    dest: "{{ init_cfg_path }}"
+    mode: 0644
+  vars:
+    fw_name: "fw-{{ name_suffix }}"
+
+# - name: Show firewall password - WARNING!! Will be displayed only once!
+#   debug:
+#     msg: "fw_password: {{ password }}"
+#   when: not reg_bootstrap_xml_path.stat.exists

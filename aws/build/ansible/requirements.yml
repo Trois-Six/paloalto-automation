@@ -1,0 +1,8 @@
+collections:
+  # Need version after https://github.com/ansible-collections/amazon.aws/pull/337, that fixed bugs with eni idempotency
+  - name: amazon.aws
+    version: '>1.5.0'
+  - name: community.aws
+    version: '>1.5.0'
+  - name: community.general
+    version: '>=3.3.0'
