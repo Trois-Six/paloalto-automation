@@ -54,14 +54,14 @@ resource "aws_instance" "fw" {
 
   tags = merge(
     {
-      "Name" = format("fw-%s", var.name_suffix)
+      "Name" = format("%s-fw", var.name_prefix)
     },
     var.tags,
   )
 }
 
 resource "aws_security_group" "public" {
-  name        = format("public-%s", var.name_suffix)
+  name        = format("%s-public", var.name_prefix)
   description = "Wide open security group for firewall external interfaces."
   vpc_id      = var.vpc_id
 
@@ -81,14 +81,14 @@ resource "aws_security_group" "public" {
 
   tags = merge(
     {
-      "Name" = format("public-%s", var.name_suffix)
+      "Name" = format("%s-public", var.name_prefix)
     },
     var.tags,
   )
 }
 
 resource "aws_security_group" "firewall_mgmt" {
-  name        = format("fw-mgmt-%s", var.name_suffix)
+  name        = format("%s-fw-mgmt", var.name_prefix)
   description = "Firewall Management Security Group."
   vpc_id      = var.vpc_id
 
@@ -122,7 +122,7 @@ resource "aws_security_group" "firewall_mgmt" {
 
   tags = merge(
     {
-      "Name" = format("fw-mgmt-%s", var.name_suffix)
+      "Name" = format("%s-fw-mgmt", var.name_prefix)
     },
     var.tags,
   )
@@ -135,7 +135,7 @@ resource "aws_network_interface" "fw_mgmt" {
 
   tags = merge(
     {
-      "Name" = format("fw-mgmt-%s", var.name_suffix)
+      "Name" = format("%s-fw-mgmt", var.name_prefix)
     },
     var.tags,
   )
@@ -149,7 +149,7 @@ resource "aws_network_interface" "fw_eth1" {
 
   tags = merge(
     {
-      "Name" = format("fw-eth1-%s", var.name_suffix)
+      "Name" = format("%s-fw-eth1", var.name_prefix)
       "Zone" = "untrust"
     },
     var.tags,
@@ -163,7 +163,7 @@ resource "aws_network_interface" "fw_eth2" {
 
   tags = merge(
     {
-      "Name" = format("fw-eth2-%s", var.name_suffix)
+      "Name" = format("%s-fw-eth2", var.name_prefix)
       "Zone" = "trust"
     },
     var.tags,
@@ -175,7 +175,7 @@ resource "aws_eip" "fw_mgmt" {
 
   tags = merge(
     {
-      "Name" = format("fw-mgmt-%s", var.name_suffix)
+      "Name" = format("%s-fw-mgmt", var.name_prefix)
     },
     var.tags,
   )
@@ -191,7 +191,7 @@ resource "aws_eip" "fw_eth1" {
 
   tags = merge(
     {
-      "Name" = format("fw-eth1-%s", var.name_suffix)
+      "Name" = format("%s-fw-eth1", var.name_prefix)
     },
     var.tags,
   )
@@ -203,25 +203,25 @@ resource "aws_eip_association" "fw_eth1" {
 }
 
 resource "aws_iam_role" "fw_bootstrap" {
-  name = format("fw-bootstrap-%s", var.name_suffix)
+  name = format("%s-fw-bootstrap", var.name_prefix)
   assume_role_policy = file(abspath(format("%s/%s", path.module, var.iam_role_document_path)))
 
   tags = merge(
     {
-      "Name" = format("fw-bootstrap-%s", var.name_suffix)
+      "Name" = format("%s-fw-bootstrap", var.name_prefix)
     },
     var.tags,
   )
 }
 
 resource "aws_iam_role_policy" "fw_bootstrap" {
-  name = format("fw-bootstrap-%s", var.name_suffix)
+  name = format("%s-fw-bootstrap", var.name_prefix)
   role = aws_iam_role.fw_bootstrap.id
   policy = file(abspath(format("%s/%s", path.module, var.iam_policy_document_path)))
 }
 
 resource "aws_iam_instance_profile" "fw_bootstrap" {
-  name = format("fw-bootstrap-%s", var.name_suffix)
+  name = format("%s-fw-bootstrap", var.name_prefix)
   role = aws_iam_role.fw_bootstrap.name
   path = "/"
 }

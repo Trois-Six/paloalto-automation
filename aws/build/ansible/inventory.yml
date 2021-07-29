@@ -7,7 +7,7 @@ all:
           ansible_python_interpreter: /usr/local/bin/python3
           aws_region: eu-west-3
           public_key_file: ~/.ssh/id_rsa.pub
-          name_suffix: paloalto
+          name_prefix: perraud
           vpc_cidr_block: 10.0.0.0/16
           public_subnet: 10.0.101.0/24
           mgmt_subnet: 10.0.102.0/24

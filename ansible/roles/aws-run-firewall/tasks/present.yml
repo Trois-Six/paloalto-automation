@@ -17,7 +17,7 @@
   paloaltonetworks.panos.panos_check:
     provider: "{{ provider }}"
     timeout: 60
-  changed_when: false  
+  changed_when: False  
 
 #
 # Not idempotent!!
@@ -38,8 +38,8 @@
 #     if_name: ethernet1/1
 #     mode: layer3
 #     comment: untrust interface
-#     enable_dhcp: true
-#     create_default_route: true
+#     enable_dhcp: True
+#     create_default_route: True
 #     vr_name: vr1
 #     vsys: vsys1
 #   notify:
@@ -51,7 +51,7 @@
 #     if_name: ethernet1/2
 #     mode: layer3
 #     comment: trust interface
-#     enable_dhcp: true
+#     enable_dhcp: True
 #     vr_name: vr1
 #     vsys: vsys1
 #   notify:
@@ -63,7 +63,7 @@
     xpath: /config/devices/entry[@name='localhost.localdomain']/network/interface/ethernet
     element: |
       <ethernet>{{ lookup('template', 'ethernet_interfaces.xml.j2') }}</ethernet>
-    edit: true
+    edit: True
   notify:
     - Commit
 
@@ -73,7 +73,7 @@
     xpath: /config/devices/entry[@name='localhost.localdomain']/network/virtual-router
     element: |
       <virtual-router>{{ lookup('template', 'virtual_routers.xml.j2') }}</virtual-router>
-    edit: true
+    edit: True
   notify:
     - Commit
 

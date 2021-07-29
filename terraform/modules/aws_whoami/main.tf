@@ -20,7 +20,7 @@ resource "aws_network_interface" "whoami" {
 
   tags = merge(
     {
-      "Name" = format("whoami-%s", var.name_suffix)
+      "Name" = format("%s-whoami", var.name_prefix)
     },
     var.tags,
   )
@@ -40,7 +40,7 @@ resource "aws_instance" "whoami" {
 
   tags = merge(
     {
-      "Name" = format("whoami-%s", var.name_suffix)
+      "Name" = format("%s-whoami", var.name_prefix)
     },
     var.tags,
   )

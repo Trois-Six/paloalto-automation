@@ -1,7 +1,7 @@
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name            = format("vpc-%s", var.name)
+  name            = format("%s-vpc", var.name)
   cidr            = var.vpc_cidr_block
   azs             = slice(data.aws_availability_zones.available.names, 0, 1)
   public_subnets  = [var.public_subnet, var.mgmt_subnet]
@@ -13,20 +13,20 @@ module "vpc" {
 }
 
 module "create_bootstrap" {
-  source = "../../../terraform/modules/aws_create_bootstrap"
+  source = "../../../terraform/modules/create_bootstrap"
 
-  name_suffix = var.name
+  name_prefix = var.name
   fw_admin    = var.fw_admin
 }
 
-module "bootstrap_bucket" {
-  source = "../../../terraform/modules/aws_bootstrap_bucket"
+module "bootstrap" {
+  source = "../../../terraform/modules/aws_bootstrap"
 
-  name_suffix = var.name
+  name_prefix = var.name
 }
 
 resource "aws_key_pair" "ssh_key" {
-  key_name   = format("ssh_key-%s", var.name)
+  key_name   = format("%s-ssh_key", var.name)
   public_key = file(var.public_key_file)
 
   tags = {
@@ -37,7 +37,7 @@ resource "aws_key_pair" "ssh_key" {
 module "firewall" {
   source = "../../../terraform/modules/aws_firewall"
 
-  name_suffix          = var.name
+  name_prefix          = var.name
   ssh_key_name         = aws_key_pair.ssh_key.key_name
   vpc_id               = module.vpc.vpc_id
   fw_mgmt_subnet_id    = module.vpc.public_subnets[1]
@@ -48,7 +48,7 @@ module "firewall" {
   fw_eth2_subnet_id    = module.vpc.private_subnets[0]
   fw_eth2_ip           = cidrhost(var.private_subnet, 4)
   fw_version           = "10.1.0"
-  fw_bootstrap_bucket  = module.bootstrap_bucket.bootstrap_bucket_name
+  fw_bootstrap_bucket  = module.bootstrap.bootstrap_bucket_name
 
   tags = {
     Environment = "simple"
@@ -68,7 +68,7 @@ resource "aws_route" "private_default_route" {
 module "whoami" {
   source = "../../../terraform/modules/aws_whoami"
 
-  name_suffix  = var.name
+  name_prefix  = var.name
   ssh_key_name = aws_key_pair.ssh_key.key_name
   subnet_id    = module.vpc.private_subnets[0]
   ip           = cidrhost(var.private_subnet, 10)

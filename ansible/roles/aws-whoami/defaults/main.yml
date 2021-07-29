@@ -1,2 +1,2 @@
 private_subnet:
-name_suffix: paloalto
+name_prefix: paloalto

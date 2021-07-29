@@ -1,13 +1,13 @@
 - name: Create bootstrap bucket
   amazon.aws.aws_s3:
-    bucket: "s3-{{ name_suffix }}"
+    bucket: "{{ name_prefix }}-s3"
     mode: create  
     permission: private
     region: "{{ aws_region }}"
 
 - name: Push files to s3 bucket
   amazon.aws.aws_s3:
-    bucket: "s3-{{ name_suffix }}"
+    bucket: "{{ name_prefix }}-s3"
     object: "{{ item.object }}"
     src: "{{ item.src }}"
     mode: put
@@ -18,7 +18,7 @@
 
 - name: Create empty directories in the s3 bucket
   amazon.aws.aws_s3:
-    bucket: "s3-{{ name_suffix }}"
+    bucket: "{{ name_prefix }}-s3"
     object: "{{ item }}"
     mode: create
   loop:

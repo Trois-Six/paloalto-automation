@@ -25,14 +25,14 @@ resource "local_file" "bootstrap" {
   content = templatefile(abspath(format("%s/%s", path.module, var.bootstrap_xml_tpl_path)), {
     fw_admin           = var.fw_admin,
     fw_hashed_password = data.external.fw_hashed_password.result["crypt_password"],
-    fw_name            = format("fw-%s", var.name_suffix),
+    fw_name            = format("%s-fw", var.name_prefix),
   })
   filename = abspath(format("%s/%s", path.module, var.bootstrap_xml_path))
 }
 
 resource "local_file" "init_cfg" {
   content = templatefile(abspath(format("%s/%s", path.module, var.init_cfg_tpl_path)), {
-    fw_name = format("fw-%s", var.name_suffix),
+    fw_name = format("%s-fw", var.name_prefix),
   })
   filename = abspath(format("%s/%s", path.module, var.init_cfg_path))
 }

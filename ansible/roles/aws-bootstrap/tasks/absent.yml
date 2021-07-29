@@ -1,4 +1,4 @@
 - name: Delete bootstrap bucket
   amazon.aws.aws_s3:
-    bucket: "s3-{{ name_suffix }}"
+    bucket: "{{ name_prefix }}-s3"
     mode: delete  

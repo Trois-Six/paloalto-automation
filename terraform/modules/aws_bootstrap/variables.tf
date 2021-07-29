@@ -10,7 +10,7 @@ variable "init_cfg_path" {
   default     = "../../../common/bootstrap/init-cfg.txt"
 }
 
-variable "name_suffix" {
-  description = "Bucket name suffix."
+variable "name_prefix" {
+  description = "Bucket name prefix."
   default     = "paloalto"
 }

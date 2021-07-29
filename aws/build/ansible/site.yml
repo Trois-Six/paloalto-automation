@@ -1,5 +1,5 @@
 - hosts: localhost
-  gather_facts: false
+  gather_facts: False
   collections:
     - amazon.aws
     - community.aws
@@ -7,15 +7,15 @@
   roles:
     - role: aws-vpc
       tags: [ aws-vpc ]
-    - role: aws-create-bootstrap
+    - role: create-bootstrap
       tags: [ create-bootstrap ]
-    - role: aws-bootstrap-bucket
-      tags: [ bootstrap-bucket ]
+    - role: aws-bootstrap
+      tags: [ bootstrap ]
     - role: aws-build-firewall
       vars:
-        already_deleted: true
+        already_deleted: True
       tags: [ build-firewall ]
     - role: aws-whoami
       vars:
-        already_deleted: true
+        already_deleted: True
       tags: [ whoami ]

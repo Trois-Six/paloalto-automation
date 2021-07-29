@@ -8,8 +8,8 @@ variable "ip" {}
 
 ## Optional Variables
 
-variable "name_suffix" {
-  description = "Suffix of the whoami instance name. Other types of resources will be named by the type + suffix."
+variable "name_prefix" {
+  description = "Prefix of the whoami instance name. Other types of resources will be named by the prefix + type."
   default     = "paloalto"
 }
 

@@ -7,7 +7,7 @@
   amazon.aws.ec2_vpc_net_info:
     region: "{{ aws_region }}"
     filters:
-      "tag:Name": "vpc-{{ name_suffix }}"
+      "tag:Name": "{{ name_prefix }}-vpc"
       "tag:Environment": simple
   register: reg_vpc
 
@@ -17,7 +17,7 @@
     filters:
       availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
       vpc-id: "{{ reg_vpc.vpcs[0].id }}"
-      "tag:Name": "vpc-{{ name_suffix }}-private-{{ reg_aws_az_info.availability_zones[0].zone_name }}"
+      "tag:Name": "{{ name_prefix }}-vpc-private-{{ reg_aws_az_info.availability_zones[0].zone_name }}"
       "tag:Environment": simple
   register: reg_subnets
   when: reg_vpc.vpcs | length > 0
@@ -32,12 +32,12 @@
     filters:
       availability-zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
       vpc-id: "{{ reg_vpc.vpcs[0].id }}"
-      "tag:Name": "whoami-{{ name_suffix }}"
+      "tag:Name": "{{ name_prefix }}-whoami"
       "tag:Environment": simple
   register: reg_info_whoami_eni
 
 - fail:
-    msg: "More than one whoami-{{ name_suffix }} network interface (eni)?"
+    msg: "More than one {{ name_prefix }}-whoami network interface (eni)?"
   when: reg_info_whoami_eni.network_interfaces | length > 1
 
 - name: Create whoami network interface - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
@@ -47,12 +47,12 @@
     subnet_id: "{{ whoami_subnet_id }}"
     tags:
       Environment: simple
-      Name: "whoami-{{ name_suffix }}"
+      Name: "{{ name_prefix }}-whoami"
     region: "{{ aws_region }}"
   register: reg_whoami_eni
   when: whoami_subnet_id is defined and reg_info_whoami_eni.network_interfaces | length == 0
 
-- name: Set fact with whoami-{{ name_suffix }} id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
+- name: Set fact with {{ name_prefix }}-whoami id - BUG - https://github.com/ansible-collections/amazon.aws/pull/337
   set_fact:
     whoami_mgmt_eni_id: >-
       {%- if reg_info_whoami_eni.network_interfaces | length == 0 -%}
@@ -75,7 +75,7 @@
     availability_zone: "{{ reg_aws_az_info.availability_zones[0].zone_name }}"
     image_id: "{{ image.image_id }}"
     instance_type: t2.micro
-    key_name: "ssh_key-{{ name_suffix }}"
+    key_name: "{{ name_prefix }}-ssh_key"
     network:
       interfaces: 
         - id: "{{ whoami_mgmt_eni_id }}"
@@ -83,6 +83,6 @@
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "whoami-{{ name_suffix }}"
+      Name: "{{ name_prefix }}-whoami"
   vars:
     image: "{{ reg_alpine_ami.images | sort(attribute='creation_date') | last }}"

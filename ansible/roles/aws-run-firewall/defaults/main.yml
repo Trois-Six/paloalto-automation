@@ -1,14 +1,13 @@
 mgmt_subnet:
 public_subnet:
 private_subnet:
-name_suffix: paloalto
 ethernet_interfaces:
   - name: ethernet1/1
-    dhcp: true
-    dhcp_create_default_route: true
+    dhcp: True
+    dhcp_create_default_route: True
     comment: untrust interface
   - name: ethernet1/2
-    dhcp: true
+    dhcp: True
     comment: trust interface
 virtual_routers:
   - name: vr1

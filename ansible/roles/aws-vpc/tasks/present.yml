@@ -1,10 +1,10 @@
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
-    name: "vpc-{{ name_suffix }}"
-    ipv6_cidr: false
+    name: "{{ name_prefix }}-vpc"
+    ipv6_cidr: False
     cidr_block: "{{ vpc_cidr_block }}"
-    dns_hostnames: false
-    dns_support: true
+    dns_hostnames: False
+    dns_support: True
     tenancy: default
     region: "{{ aws_region }}"
     tags:
@@ -23,15 +23,15 @@
 
 - name: Create public subnets
   amazon.aws.ec2_vpc_subnet:
-    assign_instances_ipv6: false
+    assign_instances_ipv6: False
     az: "{{ azs[0] }}"
     cidr: "{{ item }}"
-    map_public: true
+    map_public: True
     vpc_id: "{{ reg_vpc.vpc.id }}"
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "vpc-{{ name_suffix }}-public-{{ azs[0] }}"
+      Name: "{{ name_prefix }}-vpc-public-{{ azs[0] }}"
   loop:
     - "{{ public_subnet }}"
     - "{{ mgmt_subnet }}"
@@ -39,15 +39,15 @@
 
 - name: Create private subnets
   amazon.aws.ec2_vpc_subnet:
-    assign_instances_ipv6: false
+    assign_instances_ipv6: False
     az: "{{ azs[0] }}"
     cidr: "{{ item }}"
-    map_public: false
+    map_public: False
     vpc_id: "{{ reg_vpc.vpc.id }}"
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "vpc-{{ name_suffix }}-private-{{ azs[0] }}"
+      Name: "{{ name_prefix }}-vpc-private-{{ azs[0] }}"
   loop:
     - "{{ private_subnet }}"
   register: reg_private_subnets
@@ -58,7 +58,7 @@
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "vpc-{{ name_suffix }}"
+      Name: "{{ name_prefix }}-vpc"
   register: reg_igw
 
 - name: Create public route table
@@ -71,20 +71,20 @@
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "vpc-{{ name_suffix }}-public"
+      Name: "{{ name_prefix }}-vpc-public"
 
 - name: Create private route table
   community.aws.ec2_vpc_route_table:
     subnets: "{{ reg_private_subnets | community.general.json_query('results[*].subnet.id') }}"
-    purge_routes: false
+    purge_routes: False
     vpc_id: "{{ reg_vpc.vpc.id }}"
     region: "{{ aws_region }}"
     tags:
       Environment: simple
-      Name: "vpc-{{ name_suffix }}-private-{{ azs[0] }}"
+      Name: "{{ name_prefix }}-vpc-private-{{ azs[0] }}"
 
 - name: Create ec2 key pair
   amazon.aws.ec2_key:
-    name: "ssh_key-{{ name_suffix }}"
+    name: "{{ name_prefix }}-ssh_key"
     key_material: "{{ lookup('file', public_key_file) }}"
     region: "{{ aws_region }}"

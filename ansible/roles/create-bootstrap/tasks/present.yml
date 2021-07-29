@@ -5,14 +5,14 @@
 
 # - name: Create idempotent random password and salt
 #   set_fact:
-#     password: "{{ query('community.general.random_string', length=16, lower=true, numbers=true, special=true, override_special='@#-_=+:', upper=true) | first }}"
+#     password: "{{ query('community.general.random_string', length=16, lower=True, numbers=True, special=True, override_special='@#-_=+:', upper=True) | first }}"
 #   when: not reg_bootstrap_xml_path.stat.exists
 
 # - name: Create hashed password fact
 #   set_fact:
 #     fw_hashed_password: "{{ password | password_hash('md5_crypt', salt) }}"
 #   vars:
-#     salt: "{{ query('community.general.random_string', length=8, lower=true, numbers=true, special=false, upper=true) | first }}"
+#     salt: "{{ query('community.general.random_string', length=8, lower=True, numbers=True, special=False, upper=True) | first }}"
 #   when: not reg_bootstrap_xml_path.stat.exists
 
 - name: Create hashed password fact
@@ -25,7 +25,7 @@
     dest: "{{ bootstrap_xml_path }}"
     mode: 0644
   vars:
-    fw_name: "fw-{{ name_suffix }}"
+    fw_name: "{{ name_prefix }}-fw"
   # when: not reg_bootstrap_xml_path.stat.exists
 
 - name: Create init-cfg.txt file from template
@@ -34,7 +34,7 @@
     dest: "{{ init_cfg_path }}"
     mode: 0644
   vars:
-    fw_name: "fw-{{ name_suffix }}"
+    fw_name: "{{ name_prefix }}-fw"
 
 # - name: Show firewall password - WARNING!! Will be displayed only once!
 #   debug:

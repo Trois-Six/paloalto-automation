@@ -20,8 +20,8 @@ variable "init_cfg_path" {
   default     = "../../../common/bootstrap/init-cfg.txt"
 }
 
-variable "name_suffix" {
-  description = "Suffix of the firewall instance name. Other types of resources will be named by the type + suffix."
+variable "name_prefix" {
+  description = "Prefix of the firewall instance name. Other types of resources will be named by the prefix + type."
   default     = "paloalto"
 }
 

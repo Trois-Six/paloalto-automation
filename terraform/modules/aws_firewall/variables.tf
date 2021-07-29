@@ -42,13 +42,13 @@ variable "fw_bootstrap_bucket" {
 
 ## Optional Variables
 
-variable "name_suffix" {
-  description = "Suffix of the firewall instance name. Other types of resources will be named by the type + suffix."
+variable "name_prefix" {
+  description = "Prefix of the firewall instance name. Other types of resources will be named by the prefix + type."
   default     = "paloalto"
 }
 
 variable "tags" {
-  description = "A map of tags to add toß all resources"
+  description = "A map of tags to add to all resources"
   default     = {}
 }
 

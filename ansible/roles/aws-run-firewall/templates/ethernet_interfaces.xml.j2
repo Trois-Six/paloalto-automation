@@ -7,10 +7,10 @@
     <lldp>
         <enable>no</enable>
     </lldp>
-    {% if interface.dhcp is defined and interface.dhcp is true %}
+    {% if interface.dhcp is defined and interface.dhcp is True %}
     <dhcp-client>
         <enable>yes</enable>
-        {% if interface.dhcp_create_default_route is defined and interface.dhcp_create_default_route is false %}
+        {% if interface.dhcp_create_default_route is defined and interface.dhcp_create_default_route is False %}
         <create-default-route>no</create-default-route>
         {% endif %}
     </dhcp-client>

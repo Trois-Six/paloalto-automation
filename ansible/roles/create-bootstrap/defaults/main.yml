@@ -2,5 +2,5 @@ bootstrap_xml_tpl_path: ../../../common/bootstrap/bootstrap.xml.j2
 bootstrap_xml_path: ../../../common/bootstrap/bootstrap.xml
 init_cfg_tpl_path: ../../../common/bootstrap/init-cfg.txt.j2
 init_cfg_path: ../../../common/bootstrap/init-cfg.txt
-name_suffix: paloalto
+name_prefix: paloalto
 fw_admin: admin
